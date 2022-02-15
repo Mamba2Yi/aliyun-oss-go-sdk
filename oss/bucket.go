@@ -2,6 +2,7 @@ package oss
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/xml"
@@ -21,6 +22,13 @@ import (
 type Bucket struct {
 	Client     Client
 	BucketName string
+	ctx        context.Context
+}
+
+func (bucket Bucket) WithContext(ctx context.Context) Bucket {
+	b := bucket
+	b.ctx = ctx
+	return b
 }
 
 // PutObject creates a new object and it will overwrite the original one if it exists already.
@@ -1232,7 +1240,8 @@ func (bucket Bucket) do(method, objectName string, params map[string]interface{}
 		return nil, err
 	}
 
-	resp, err := bucket.Client.Conn.Do(method, bucket.BucketName, objectName,
+	conn := bucket.Client.Conn.WithContext(bucket.ctx)
+	resp, err := conn.Do(method, bucket.BucketName, objectName,
 		params, headers, data, 0, listener)
 
 	// get response header

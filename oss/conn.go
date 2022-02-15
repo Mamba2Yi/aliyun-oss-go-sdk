@@ -2,6 +2,7 @@ package oss
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
@@ -25,6 +26,7 @@ type Conn struct {
 	config *Config
 	url    *urlMaker
 	client *http.Client
+	ctx    context.Context
 }
 
 var signKeyList = []string{"acl", "uploads", "location", "cors",
@@ -83,6 +85,12 @@ func (conn *Conn) init(config *Config, urlMaker *urlMaker, client *http.Client) 
 	conn.client = client
 
 	return nil
+}
+
+func (conn Conn) WithContext(ctx context.Context) Conn {
+	c := conn
+	c.ctx = ctx
+	return c
 }
 
 // Do sends request and returns the response
@@ -145,6 +153,10 @@ func (conn Conn) DoURL(method HTTPMethod, signedURL string, headers map[string]s
 
 	if conn.config.LogLevel >= Debug {
 		conn.LoggerHTTPReq(req)
+	}
+
+	if conn.ctx != nil {
+		req = req.WithContext(conn.ctx)
 	}
 
 	resp, err := conn.client.Do(req)
@@ -305,6 +317,10 @@ func (conn Conn) doRequest(method string, uri *url.URL, canonicalizedResource st
 
 	if conn.config.LogLevel >= Debug {
 		conn.LoggerHTTPReq(req)
+	}
+
+	if conn.ctx != nil {
+		req = req.WithContext(conn.ctx)
 	}
 
 	resp, err := conn.client.Do(req)
@@ -540,7 +556,7 @@ func (conn Conn) isDownloadLimitResponse(resp *http.Response) bool {
 		return false
 	}
 
-	if strings.EqualFold(resp.Request.Method,"GET") {
+	if strings.EqualFold(resp.Request.Method, "GET") {
 		return true
 	}
 	return false
